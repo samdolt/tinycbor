@@ -1,1 +1,0 @@
-/usr/bin/cc   -rdynamic CMakeFiles/tinycbor_sample.dir/simplereader.c.o  -o tinycbor_sample ../libtinycbor.a 
