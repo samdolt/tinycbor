@@ -28,7 +28,7 @@
 #include "cborinternal_p.h"
 #include "compilersupport_p.h"
 
-#include <cjson/cJSON.h>
+#include "parson.h"
 
 #include <errno.h>
 #include <math.h>
@@ -229,8 +229,8 @@ struct MetaData parse_meta_data(cJSON *md)
     return result;
 }
 
-CborError decode_json(cJSON *json, CborEncoder *encoder);
-CborError decode_json_with_metadata(cJSON *item, CborEncoder *encoder, struct MetaData md)
+CborError decode_json(const uint8_t* json, CborEncoder *encoder);
+CborError decode_json_with_metadata(JSON_Object* item, CborEncoder *encoder, struct MetaData md)
 {
     switch (md.t) {
     case CborIntegerType: {
@@ -305,15 +305,14 @@ CborError decode_json_with_metadata(cJSON *item, CborEncoder *encoder, struct Me
     return decode_json(item, encoder);
 }
 
-CborError decode_json(cJSON *json, CborEncoder *encoder)
+CborError decode_json(const uint8_t* json_string, CborEncoder *encoder)
 {
     CborEncoder container;
     CborError err;
-    cJSON *item;
+    JSON_Object* item = json_parse_string(cbor);
 
-    switch (json->type) {
-    case cJSON_False:
-    case cJSON_True:
+    switch (item->type) {
+    case JSONBoolean:
         return cbor_encode_boolean(encoder, json->type == cJSON_True);
 
     case cJSON_NULL:
@@ -394,100 +393,100 @@ encode_double:
     }
 }
 
-int main(int argc, char **argv)
-{
-    int c;
-    while ((c = getopt(argc, argv, "M")) != -1) {
-        switch (c) {
-        case 'M':
-            usingMetaData = true;
-            break;
+// int main(int argc, char **argv)
+// {
+//     int c;
+//     while ((c = getopt(argc, argv, "M")) != -1) {
+//         switch (c) {
+//         case 'M':
+//             usingMetaData = true;
+//             break;
 
-        case '?':
-            fprintf(stderr, "Unknown option -%c.\n", optopt);
-            // fall through
-        case 'h':
-            puts("Usage: json2cbor [OPTION]... [FILE]...\n"
-                 "Reads JSON content from FILE and converts to CBOR.\n"
-                 "\n"
-                 "Options:\n"
-                 " -M       Interpret metadata added by cbordump tool\n"
-                 "");
-            return c == '?' ? EXIT_FAILURE : EXIT_SUCCESS;
-        }
-    }
+//         case '?':
+//             fprintf(stderr, "Unknown option -%c.\n", optopt);
+//             // fall through
+//         case 'h':
+//             puts("Usage: json2cbor [OPTION]... [FILE]...\n"
+//                  "Reads JSON content from FILE and converts to CBOR.\n"
+//                  "\n"
+//                  "Options:\n"
+//                  " -M       Interpret metadata added by cbordump tool\n"
+//                  "");
+//             return c == '?' ? EXIT_FAILURE : EXIT_SUCCESS;
+//         }
+//     }
 
-    FILE *in;
-    const char *fname = argv[optind];
-    if (fname && strcmp(fname, "-") != 0) {
-        in = fopen(fname, "r");
-        if (!in) {
-            perror("open");
-            return EXIT_FAILURE;
-        }
-    } else {
-        in = stdin;
-        fname = "-";
-    }
+//     FILE *in;
+//     const char *fname = argv[optind];
+//     if (fname && strcmp(fname, "-") != 0) {
+//         in = fopen(fname, "r");
+//         if (!in) {
+//             perror("open");
+//             return EXIT_FAILURE;
+//         }
+//     } else {
+//         in = stdin;
+//         fname = "-";
+//     }
 
-    /* 1. read the file */
-    off_t fsize;
-    if (fseeko(in, 0, SEEK_END) == 0 && (fsize = ftello(in)) >= 0) {
-        buffersize = fsize + 1;
-        buffer = malloc(buffersize);
-        if (buffer == NULL) {
-            perror("malloc");
-            return EXIT_FAILURE;
-        }
+//     /* 1. read the file */
+//     off_t fsize;
+//     if (fseeko(in, 0, SEEK_END) == 0 && (fsize = ftello(in)) >= 0) {
+//         buffersize = fsize + 1;
+//         buffer = malloc(buffersize);
+//         if (buffer == NULL) {
+//             perror("malloc");
+//             return EXIT_FAILURE;
+//         }
 
-        rewind(in);
-        fsize = fread(buffer, 1, fsize, in);
-        buffer[fsize] = '\0';
-    } else {
-        const unsigned chunk = 16384;
-        buffersize = 0;
-        buffer = NULL;
-        do {    // it the hard way
-            buffer = realloc(buffer, buffersize + chunk);
-            if (buffer == NULL) {
-                perror("malloc");
-                return EXIT_FAILURE;
-            }
+//         rewind(in);
+//         fsize = fread(buffer, 1, fsize, in);
+//         buffer[fsize] = '\0';
+//     } else {
+//         const unsigned chunk = 16384;
+//         buffersize = 0;
+//         buffer = NULL;
+//         do {    // it the hard way
+//             buffer = realloc(buffer, buffersize + chunk);
+//             if (buffer == NULL) {
+//                 perror("malloc");
+//                 return EXIT_FAILURE;
+//             }
 
-            buffersize += fread(buffer + buffersize, 1, chunk, in);
-        } while (!feof(in) && !ferror(in));
-        buffer[buffersize] = '\0';
-    }
+//             buffersize += fread(buffer + buffersize, 1, chunk, in);
+//         } while (!feof(in) && !ferror(in));
+//         buffer[buffersize] = '\0';
+//     }
 
-    if (ferror(in)) {
-        perror("read");
-        return EXIT_FAILURE;
-    }
-    if (in != stdin)
-        fclose(in);
+//     if (ferror(in)) {
+//         perror("read");
+//         return EXIT_FAILURE;
+//     }
+//     if (in != stdin)
+//         fclose(in);
 
-    /* 2. parse as JSON */
-    cJSON *doc = cJSON_ParseWithOpts((char *)buffer, NULL, true);
-    if (doc == NULL) {
-        fprintf(stderr, "json2cbor: %s: could not parse.\n", fname);
-        return EXIT_FAILURE;
-    }
+//     /* 2. parse as JSON */
+//     cJSON *doc = cJSON_ParseWithOpts((char *)buffer, NULL, true);
+//     if (doc == NULL) {
+//         fprintf(stderr, "json2cbor: %s: could not parse.\n", fname);
+//         return EXIT_FAILURE;
+//     }
 
-    /* 3. encode as CBOR */
-    // We're going to reuse the buffer, as CBOR is usually shorter than the equivalent JSON
-    CborEncoder encoder;
-    cbor_encoder_init(&encoder, buffer, buffersize, 0);
-    CborError err = decode_json(doc, &encoder);
+//     /* 3. encode as CBOR */
+//     // We're going to reuse the buffer, as CBOR is usually shorter than the equivalent JSON
+//     CborEncoder encoder;
+//     cbor_encoder_init(&encoder, buffer, buffersize, 0);
+//     CborError err = decode_json(doc, &encoder);
 
-    cJSON_Delete(doc);
+//     cJSON_Delete(doc);
 
-    if (err) {
-        fprintf(stderr, "json2cbor: %s: error encoding to CBOR: %s\n", fname,
-                cbor_error_string(err));
-        return EXIT_FAILURE;
-    }
+//     if (err) {
+//         fprintf(stderr, "json2cbor: %s: error encoding to CBOR: %s\n", fname,
+//                 cbor_error_string(err));
+//         return EXIT_FAILURE;
+//     }
 
-    fwrite(buffer, 1, encoder.data.ptr - buffer, stdout);
-    free(buffer);
-    return EXIT_SUCCESS;
-}
+//     fwrite(buffer, 1, encoder.data.ptr - buffer, stdout);
+//     free(buffer);
+//     return EXIT_SUCCESS;
+// }

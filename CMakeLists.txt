@@ -12,11 +12,13 @@ add_library(tinycbor
     ${CMAKE_CURRENT_LIST_DIR}/src/cbortojson.c
     ${CMAKE_CURRENT_LIST_DIR}/src/cborvalidation.c
     ${CMAKE_CURRENT_LIST_DIR}/src/open_memstream.c
+    ${CMAKE_CURRENT_LIST_DIR}/tools/json2cbor/json2cbor.c
 )
 
 target_include_directories(tinycbor
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}/inc
+        ${CMAKE_CURRENT_LIST_DIR}/tools/inc
 )
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/samples)
