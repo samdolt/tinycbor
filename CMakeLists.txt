@@ -6,6 +6,7 @@ project(intel_tinycbor LANGUAGES C)
 cmake_minimum_required(VERSION 3.10)
 
 option(build_tools "Build the cbor tools. Note: This will install the cjson library as a dependency" OFF)
+option(DISABLE_OPEN_MEMSTREAM "Build the code without OPEN_MEMSTREAM support" OFF)
 
 add_library(tinycbor
     ${CMAKE_CURRENT_LIST_DIR}/src/cborencoder.c
@@ -29,7 +30,7 @@ target_include_directories(tinycbor
 include(CheckSymbolExists)
 check_symbol_exists(open_memstream "stdio.h" HAVE_OPEN_MEMSTREAM)
 
-if(HAVE_OPEN_MEMSTREAM)
+if(HAVE_OPEN_MEMSTREAM AND NOT DISABLE_OPEN_MEMSTREAM)
     target_sources(tinycbor
         PUBLIC
             ${CMAKE_CURRENT_LIST_DIR}/src/open_memstream.c
