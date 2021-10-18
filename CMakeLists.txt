@@ -42,6 +42,18 @@ endif()
 
 add_library(intel::tinycbor ALIAS tinycbor)
 
+set_target_properties(tinycbor PROPERTIES PUBLIC_HEADER "src/cbor.h;src/cborjson.h;src/tinycbor-version.h")
+
+include(GNUInstallDirs)
+install(TARGETS tinycbor
+        LIBRARY
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        PUBLIC_HEADER
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tinycbor
+)
+
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/examples)
 
 if(${build_tools})
