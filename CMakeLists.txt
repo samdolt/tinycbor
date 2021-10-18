@@ -26,16 +26,19 @@ target_include_directories(tinycbor
         ${CMAKE_CURRENT_LIST_DIR}/src
 )
 
-if(WIN32)
+include(CheckSymbolExists)
+check_symbol_exists(open_memstream "stdio.h" HAVE_OPEN_MEMSTREAM)
+
+if(HAVE_OPEN_MEMSTREAM)
+    target_sources(tinycbor
+        PUBLIC
+            ${CMAKE_CURRENT_LIST_DIR}/src/open_memstream.c
+    )
+else()
     add_definitions(-DWITHOUT_OPEN_MEMSTREAM)
     message(
         WARNING
         "funopen and fopencookie unavailable, open_memstream can not be implemented and conversion to JSON will not work properly!"
-    )
-else()
-    target_sources(tinycbor
-        PUBLIC
-            ${CMAKE_CURRENT_LIST_DIR}/src/open_memstream.c
     )
 endif()
 
